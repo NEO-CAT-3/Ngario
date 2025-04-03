@@ -169,15 +169,14 @@ function update() {
     // 更新敵人波動效果
     enemies.forEach(enemy => {
         const points = [];
-        const segments = 64; // 增加分段數使波動更平滑
+        const segments = 64;
         const time = this.time.now;
         
         for (let i = 0; i < segments; i++) {
             const angle = (i / segments) * Math.PI * 2;
-            // 使用多個正弦波疊加創造更複雜的波動
-            const wave1 = Math.sin(time * 0.05 + angle * 8) * 50; // 主要波動
-            const wave2 = Math.sin(time * 0.1 + angle * 16) * 25; // 次要波動
-            const wave3 = Math.sin(time * 0.15 + angle * 24) * 12; // 細節波動
+            const wave1 = Math.sin(time * 0.05 + angle * 8) * 50;
+            const wave2 = Math.sin(time * 0.1 + angle * 16) * 25;
+            const wave3 = Math.sin(time * 0.15 + angle * 24) * 12;
             const wave = wave1 + wave2 + wave3;
             const r = enemy.radius + wave;
             points.push({
@@ -187,12 +186,12 @@ function update() {
         }
         
         enemy.clear();
-        enemy.lineStyle(4, enemy.color); // 增加線條粗度
+        enemy.lineStyle(4, enemy.color);
         enemy.beginPath();
         enemy.moveTo(points[0].x, points[0].y);
         
         for (let i = 1; i < points.length; i++) {
-            enemy.lineTo(points[i].x, enemy.y + Math.sin(angle) * r);
+            enemy.lineTo(points[i].x, points[i].y);
         }
         
         enemy.closePath();
