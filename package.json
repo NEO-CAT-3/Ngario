@@ -1,0 +1,9 @@
+{
+    "name": "ngario-offline",
+    "version": "1.0.0",
+    "description": "Agar.io 離線版遊戲",
+    "main": "index.html",
+    "dependencies": {
+        "phaser": "^3.55.2"
+    }
+}
