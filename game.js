@@ -3,6 +3,7 @@ const config = {
     width: 800,
     height: 600,
     parent: 'game',
+    backgroundColor: '#ffffff', // 添加白色背景
     physics: {
         default: 'arcade',
         arcade: {
@@ -92,6 +93,36 @@ function create() {
     player.color = 0xff0000;
     playerPieces.push(player);
 
+    // 初始繪製玩家
+    const points = [];
+    const segments = 64;
+    const time = this.time.now;
+    
+    for (let i = 0; i < segments; i++) {
+        const angle = (i / segments) * Math.PI * 2;
+        const wave1 = Math.sin(time * 0.05 + angle * 8) * 50;
+        const wave2 = Math.sin(time * 0.1 + angle * 16) * 25;
+        const wave3 = Math.sin(time * 0.15 + angle * 24) * 12;
+        const wave = wave1 + wave2 + wave3;
+        const r = player.radius + wave;
+        points.push({
+            x: player.x + Math.cos(angle) * r,
+            y: player.y + Math.sin(angle) * r
+        });
+    }
+    
+    player.clear();
+    player.lineStyle(4, player.color);
+    player.beginPath();
+    player.moveTo(points[0].x, points[0].y);
+    
+    for (let i = 1; i < points.length; i++) {
+        player.lineTo(points[i].x, points[i].y);
+    }
+    
+    player.closePath();
+    player.strokePath();
+
     // 創建敵人（藍色圓形）
     for (let i = 0; i < 5; i++) {
         const enemy = this.add.graphics();
@@ -104,6 +135,33 @@ function create() {
         enemy.color = 0x0000ff;
         enemy.target = null;
         enemies.push(enemy);
+
+        // 初始繪製敵人
+        const enemyPoints = [];
+        for (let j = 0; j < segments; j++) {
+            const angle = (j / segments) * Math.PI * 2;
+            const wave1 = Math.sin(time * 0.05 + angle * 8) * 50;
+            const wave2 = Math.sin(time * 0.1 + angle * 16) * 25;
+            const wave3 = Math.sin(time * 0.15 + angle * 24) * 12;
+            const wave = wave1 + wave2 + wave3;
+            const r = enemy.radius + wave;
+            enemyPoints.push({
+                x: enemy.x + Math.cos(angle) * r,
+                y: enemy.y + Math.sin(angle) * r
+            });
+        }
+        
+        enemy.clear();
+        enemy.lineStyle(4, enemy.color);
+        enemy.beginPath();
+        enemy.moveTo(enemyPoints[0].x, enemyPoints[0].y);
+        
+        for (let j = 1; j < enemyPoints.length; j++) {
+            enemy.lineTo(enemyPoints[j].x, enemyPoints[j].y);
+        }
+        
+        enemy.closePath();
+        enemy.strokePath();
     }
 
     // 創建食物（綠色圓形）
@@ -115,6 +173,33 @@ function create() {
         food.radius = 5;
         food.color = 0x00ff00;
         foods.push(food);
+
+        // 初始繪製食物
+        const foodPoints = [];
+        for (let j = 0; j < segments; j++) {
+            const angle = (j / segments) * Math.PI * 2;
+            const wave1 = Math.sin(time * 0.05 + angle * 8) * 25;
+            const wave2 = Math.sin(time * 0.1 + angle * 16) * 12;
+            const wave3 = Math.sin(time * 0.15 + angle * 24) * 6;
+            const wave = wave1 + wave2 + wave3;
+            const r = food.radius + wave;
+            foodPoints.push({
+                x: food.x + Math.cos(angle) * r,
+                y: food.y + Math.sin(angle) * r
+            });
+        }
+        
+        food.clear();
+        food.lineStyle(3, food.color);
+        food.beginPath();
+        food.moveTo(foodPoints[0].x, foodPoints[0].y);
+        
+        for (let j = 1; j < foodPoints.length; j++) {
+            food.lineTo(foodPoints[j].x, foodPoints[j].y);
+        }
+        
+        food.closePath();
+        food.strokePath();
     }
 
     // 設置鍵盤控制
