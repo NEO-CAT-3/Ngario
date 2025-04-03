@@ -136,12 +136,16 @@ function update() {
     // 更新玩家波動效果
     playerPieces.forEach(piece => {
         const points = [];
-        const segments = 32;
+        const segments = 64; // 增加分段數使波動更平滑
         const time = this.time.now;
         
         for (let i = 0; i < segments; i++) {
             const angle = (i / segments) * Math.PI * 2;
-            const wave = Math.sin(time * 0.01 + angle * 5) * 20; // 增加波動幅度和頻率
+            // 使用多個正弦波疊加創造更複雜的波動
+            const wave1 = Math.sin(time * 0.05 + angle * 8) * 50; // 主要波動
+            const wave2 = Math.sin(time * 0.1 + angle * 16) * 25; // 次要波動
+            const wave3 = Math.sin(time * 0.15 + angle * 24) * 12; // 細節波動
+            const wave = wave1 + wave2 + wave3;
             const r = piece.radius + wave;
             points.push({
                 x: piece.x + Math.cos(angle) * r,
@@ -150,7 +154,7 @@ function update() {
         }
         
         piece.clear();
-        piece.lineStyle(3, piece.color); // 增加線條粗度
+        piece.lineStyle(4, piece.color); // 增加線條粗度
         piece.beginPath();
         piece.moveTo(points[0].x, points[0].y);
         
@@ -165,12 +169,16 @@ function update() {
     // 更新敵人波動效果
     enemies.forEach(enemy => {
         const points = [];
-        const segments = 32;
+        const segments = 64; // 增加分段數使波動更平滑
         const time = this.time.now;
         
         for (let i = 0; i < segments; i++) {
             const angle = (i / segments) * Math.PI * 2;
-            const wave = Math.sin(time * 0.01 + angle * 5) * 20; // 增加波動幅度和頻率
+            // 使用多個正弦波疊加創造更複雜的波動
+            const wave1 = Math.sin(time * 0.05 + angle * 8) * 50; // 主要波動
+            const wave2 = Math.sin(time * 0.1 + angle * 16) * 25; // 次要波動
+            const wave3 = Math.sin(time * 0.15 + angle * 24) * 12; // 細節波動
+            const wave = wave1 + wave2 + wave3;
             const r = enemy.radius + wave;
             points.push({
                 x: enemy.x + Math.cos(angle) * r,
@@ -179,12 +187,12 @@ function update() {
         }
         
         enemy.clear();
-        enemy.lineStyle(3, enemy.color); // 增加線條粗度
+        enemy.lineStyle(4, enemy.color); // 增加線條粗度
         enemy.beginPath();
         enemy.moveTo(points[0].x, points[0].y);
         
         for (let i = 1; i < points.length; i++) {
-            enemy.lineTo(points[i].x, points[i].y);
+            enemy.lineTo(points[i].x, enemy.y + Math.sin(angle) * r);
         }
         
         enemy.closePath();
@@ -194,12 +202,16 @@ function update() {
     // 更新食物波動效果
     foods.forEach(food => {
         const points = [];
-        const segments = 32;
+        const segments = 64; // 增加分段數使波動更平滑
         const time = this.time.now;
         
         for (let i = 0; i < segments; i++) {
             const angle = (i / segments) * Math.PI * 2;
-            const wave = Math.sin(time * 0.01 + angle * 5) * 10; // 增加波動幅度和頻率
+            // 使用多個正弦波疊加創造更複雜的波動
+            const wave1 = Math.sin(time * 0.05 + angle * 8) * 25; // 主要波動
+            const wave2 = Math.sin(time * 0.1 + angle * 16) * 12; // 次要波動
+            const wave3 = Math.sin(time * 0.15 + angle * 24) * 6; // 細節波動
+            const wave = wave1 + wave2 + wave3;
             const r = food.radius + wave;
             points.push({
                 x: food.x + Math.cos(angle) * r,
@@ -208,7 +220,7 @@ function update() {
         }
         
         food.clear();
-        food.lineStyle(2, food.color); // 增加線條粗度
+        food.lineStyle(3, food.color); // 增加線條粗度
         food.beginPath();
         food.moveTo(points[0].x, points[0].y);
         
