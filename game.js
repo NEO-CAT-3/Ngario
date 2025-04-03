@@ -143,7 +143,7 @@ function create() {
     playerPieces.push(player);
 
     // 創建敵人
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 20; i++) {
         createEnemy.call(this,
             Phaser.Math.Between(50, WORLD_SIZE-50),
             Phaser.Math.Between(50, WORLD_SIZE-50)
@@ -517,7 +517,7 @@ function resetGame() {
     // 重新生成所有敵人
     enemies.forEach(enemy => enemy.destroy());
     enemies = [];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 20; i++) {
         createEnemy.call(this,
             Phaser.Math.Between(50, WORLD_SIZE-50),
             Phaser.Math.Between(50, WORLD_SIZE-50)
@@ -527,7 +527,10 @@ function resetGame() {
 
 // 在創建敵人時使用新的名字生成函數
 function createEnemy(x, y) {
-    const enemy = this.add.circle(x, y, 20, 0x0000ff);
+    // 生成隨機顏色
+    const color = Phaser.Display.Color.RandomRGB().color;
+    
+    const enemy = this.add.circle(x, y, 20, color);
     this.physics.add.existing(enemy);
     enemy.body.setCollideWorldBounds(true);
     enemy.mass = 10;
