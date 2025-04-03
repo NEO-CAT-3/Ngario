@@ -141,7 +141,7 @@ function update() {
         
         for (let i = 0; i < segments; i++) {
             const angle = (i / segments) * Math.PI * 2;
-            const wave = Math.sin(time * 0.002 + angle * 3) * 2;
+            const wave = Math.sin(time * 0.002 + angle * 3) * 10;
             const r = piece.radius + wave;
             points.push({
                 x: piece.x + Math.cos(angle) * r,
@@ -170,7 +170,7 @@ function update() {
         
         for (let i = 0; i < segments; i++) {
             const angle = (i / segments) * Math.PI * 2;
-            const wave = Math.sin(time * 0.002 + angle * 3) * 2;
+            const wave = Math.sin(time * 0.002 + angle * 3) * 10;
             const r = enemy.radius + wave;
             points.push({
                 x: enemy.x + Math.cos(angle) * r,
@@ -199,7 +199,7 @@ function update() {
         
         for (let i = 0; i < segments; i++) {
             const angle = (i / segments) * Math.PI * 2;
-            const wave = Math.sin(time * 0.002 + angle * 3) * 1;
+            const wave = Math.sin(time * 0.002 + angle * 3) * 5;
             const r = food.radius + wave;
             points.push({
                 x: food.x + Math.cos(angle) * r,
