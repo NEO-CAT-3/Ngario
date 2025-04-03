@@ -188,6 +188,7 @@ function create() {
 function update() {
     // 處理玩家移動
     playerPieces.forEach(piece => {
+        // 根據質量計算速度，質量越大速度越慢
         const speed = 200 / Math.sqrt(piece.mass);
         
         if (cursors.left.isDown) {
@@ -223,6 +224,7 @@ function update() {
 
     // 更新敵人 AI
     enemies.forEach(enemy => {
+        // 敵人速度也根據質量計算
         const speed = 200 / Math.sqrt(enemy.mass);
 
         // 尋找最近的目標
