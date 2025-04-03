@@ -248,65 +248,59 @@ function update() {
                 foods.push(newFood);
             }
         });
-    });
 
-    // 檢查玩家是否被敵人吃掉
-    playerPieces.forEach((piece, index) => {
-        enemies.forEach(enemy => {
-            if (piece.mass < enemy.mass && 
+        // 檢查玩家是否被敵人吃掉
+        playerPieces.forEach((piece, pieceIndex) => {
+            if (enemy.mass > piece.mass * 1.1 && 
                 Phaser.Math.Distance.Between(
-                    piece.x, piece.y,
-                    enemy.x, enemy.y
+                    enemy.x, enemy.y,
+                    piece.x, piece.y
                 ) < enemy.radius) {
-                // 移除玩家碎片
+                // 敵人吃掉玩家
+                enemy.mass += piece.mass * 0.8;
                 piece.destroy();
-                playerPieces.splice(index, 1);
+                playerPieces.splice(pieceIndex, 1);
                 
-                // 如果所有碎片都被吃掉，遊戲結束
+                // 如果所有玩家碎片都被吃掉，重新開始
                 if (playerPieces.length === 0) {
-                    this.scene.restart();
+                    resetGame();
                 }
             }
         });
-    });
 
-    // 檢查玩家是否吃掉敵人
-    enemies.forEach((enemy, index) => {
-        playerPieces.forEach(piece => {
-            if (piece.mass > enemy.mass && 
+        // 檢查敵人是否被玩家吃掉
+        if (playerPieces.some(piece => piece.mass > enemy.mass * 1.1) &&
+            playerPieces.some(piece => 
                 Phaser.Math.Distance.Between(
                     piece.x, piece.y,
                     enemy.x, enemy.y
-                ) < piece.radius) {
-                // 增加玩家大小
-                piece.mass += enemy.mass; // 獲得敵人全部質量
-                piece.radius = Math.sqrt(piece.mass) * 4;
-                piece.setRadius(piece.radius);
-                
-                // 更新分數
-                score += 50;
-                scoreText.setText('分數: ' + score);
-                
-                // 移除敵人
-                enemy.destroy();
-                enemies.splice(index, 1);
-                
-                // 創建新的敵人
-                const newEnemy = this.add.circle(
-                    Phaser.Math.Between(50, WORLD_SIZE-50),
-                    Phaser.Math.Between(50, WORLD_SIZE-50),
-                    20,
-                    0x0000ff
-                );
-                this.physics.add.existing(newEnemy);
-                newEnemy.body.setCollideWorldBounds(true);
-                newEnemy.mass = 10;
-                newEnemy.radius = Math.sqrt(newEnemy.mass) * 4;
-                newEnemy.setRadius(newEnemy.radius);
-                newEnemy.target = null;
-                enemies.push(newEnemy);
-            }
-        });
+                ) < piece.radius
+            )) {
+            // 玩家吃掉敵人
+            playerPieces.forEach(piece => {
+                if (piece.mass > enemy.mass * 1.1) {
+                    piece.mass += enemy.mass * 0.8;
+                    score += 50;
+                    scoreText.setText('分數: ' + score);
+                }
+            });
+            
+            // 重新生成敵人
+            enemy.destroy();
+            const newEnemy = this.add.circle(
+                Phaser.Math.Between(50, WORLD_SIZE-50),
+                Phaser.Math.Between(50, WORLD_SIZE-50),
+                20,
+                0x0000ff
+            );
+            this.physics.add.existing(newEnemy);
+            newEnemy.body.setCollideWorldBounds(true);
+            newEnemy.mass = 10;
+            newEnemy.radius = Math.sqrt(newEnemy.mass) * 4;
+            newEnemy.setRadius(newEnemy.radius);
+            newEnemy.target = null;
+            enemies.push(newEnemy);
+        }
     });
 }
 
@@ -374,4 +368,22 @@ function shootMass() {
             mass.destroy();
         });
     }
+}
+
+function resetGame() {
+    // 重置玩家
+    player = this.add.circle(WORLD_SIZE/2, WORLD_SIZE/2, 20, 0xff0000);
+    this.physics.add.existing(player);
+    player.body.setCollideWorldBounds(true);
+    player.mass = 10;
+    player.radius = Math.sqrt(player.mass) * 4;
+    player.setRadius(player.radius);
+    playerPieces = [player];
+    
+    // 重置分數
+    score = 0;
+    scoreText.setText('分數: ' + score);
+    
+    // 重置相機
+    camera.startFollow(player, true, 0.1, 0.1);
 } 
