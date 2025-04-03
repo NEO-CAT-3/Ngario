@@ -141,7 +141,7 @@ function update() {
         
         for (let i = 0; i < segments; i++) {
             const angle = (i / segments) * Math.PI * 2;
-            const wave = Math.sin(time * 0.002 + angle * 3) * 10;
+            const wave = Math.sin(time * 0.01 + angle * 5) * 20; // 增加波動幅度和頻率
             const r = piece.radius + wave;
             points.push({
                 x: piece.x + Math.cos(angle) * r,
@@ -150,7 +150,7 @@ function update() {
         }
         
         piece.clear();
-        piece.lineStyle(2, piece.color);
+        piece.lineStyle(3, piece.color); // 增加線條粗度
         piece.beginPath();
         piece.moveTo(points[0].x, points[0].y);
         
@@ -170,7 +170,7 @@ function update() {
         
         for (let i = 0; i < segments; i++) {
             const angle = (i / segments) * Math.PI * 2;
-            const wave = Math.sin(time * 0.002 + angle * 3) * 10;
+            const wave = Math.sin(time * 0.01 + angle * 5) * 20; // 增加波動幅度和頻率
             const r = enemy.radius + wave;
             points.push({
                 x: enemy.x + Math.cos(angle) * r,
@@ -179,7 +179,7 @@ function update() {
         }
         
         enemy.clear();
-        enemy.lineStyle(2, enemy.color);
+        enemy.lineStyle(3, enemy.color); // 增加線條粗度
         enemy.beginPath();
         enemy.moveTo(points[0].x, points[0].y);
         
@@ -199,7 +199,7 @@ function update() {
         
         for (let i = 0; i < segments; i++) {
             const angle = (i / segments) * Math.PI * 2;
-            const wave = Math.sin(time * 0.002 + angle * 3) * 5;
+            const wave = Math.sin(time * 0.01 + angle * 5) * 10; // 增加波動幅度和頻率
             const r = food.radius + wave;
             points.push({
                 x: food.x + Math.cos(angle) * r,
@@ -208,7 +208,7 @@ function update() {
         }
         
         food.clear();
-        food.lineStyle(1, food.color);
+        food.lineStyle(2, food.color); // 增加線條粗度
         food.beginPath();
         food.moveTo(points[0].x, points[0].y);
         
