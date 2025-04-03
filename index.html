@@ -1,14 +1,24 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ngar.io 離線版</title>
-    <link rel="stylesheet" href="/Ngario-offline/style.css">
-    <script src="/Ngario-offline/lib/phaser.min.js"></script>
+    <title>Ngario</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
 </head>
 <body>
+    <div id="start-screen">
+        <h1>Ngario</h1>
+        <div class="input-container">
+            <input type="text" id="player-name" placeholder="請輸入你的名字">
+            <button id="start-button">開始遊戲</button>
+        </div>
+    </div>
     <div id="game"></div>
-    <script src="/Ngario-offline/game.js"></script>
+    <div id="leaderboard">
+        <h2>排行榜</h2>
+        <div id="player-scores"></div>
+    </div>
+    <script src="game.js"></script>
 </body>
 </html> 

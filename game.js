@@ -1,7 +1,7 @@
 const config = {
     type: Phaser.AUTO,
-    width: 800,
-    height: 600,
+    width: 1200,
+    height: 800,
     parent: 'game',
     physics: {
         default: 'arcade',
@@ -16,8 +16,7 @@ const config = {
     }
 };
 
-const game = new Phaser.Game(config);
-
+let game;
 let player;
 let playerPieces = []; // 玩家的所有碎片
 let enemies = [];
@@ -28,7 +27,92 @@ let wKey;
 let score = 0;
 let scoreText;
 let camera;
+let playerName = '玩家';
 const WORLD_SIZE = 2000; // 世界大小
+
+// 歷史人物名字列表
+const historicalFigures = [
+    '秦始皇', '漢武帝', '唐太宗', '成吉思汗', '康熙帝',
+    '拿破崙', '亞歷山大', '凱撒', '達文西', '愛因斯坦',
+    '牛頓', '莎士比亞', '貝多芬', '莫扎特', '達爾文',
+    '伽利略', '哥白尼', '愛迪生', '特斯拉', '居里夫人',
+    '孔子', '老子', '莊子', '孟子', '孫子',
+    '蘇格拉底', '柏拉圖', '亞里士多德', '阿基米德', '歐幾里得'
+];
+
+// 用於追蹤已使用的名字
+let usedNames = new Set();
+
+function getRandomName() {
+    // 如果所有名字都已使用，重置已使用名字集合
+    if (usedNames.size >= historicalFigures.length) {
+        usedNames.clear();
+    }
+    
+    let availableNames = historicalFigures.filter(name => !usedNames.has(name));
+    let randomName = availableNames[Math.floor(Math.random() * availableNames.length)];
+    usedNames.add(randomName);
+    return randomName;
+}
+
+// 等待DOM加載完成
+document.addEventListener('DOMContentLoaded', () => {
+    const startButton = document.getElementById('start-button');
+    const playerNameInput = document.getElementById('player-name');
+    const startScreen = document.getElementById('start-screen');
+
+    startButton.addEventListener('click', () => {
+        const name = playerNameInput.value.trim();
+        if (name) {
+            playerName = name;
+        }
+        startScreen.style.display = 'none';
+        game = new Phaser.Game(config);
+    });
+});
+
+function updateLeaderboard() {
+    const leaderboard = document.getElementById('player-scores');
+    if (!leaderboard) return;
+
+    leaderboard.innerHTML = '';
+
+    // 創建所有分數的數組
+    const scores = [];
+
+    // 添加玩家分數
+    scores.push({
+        name: playerName,
+        score: score,
+        isPlayer: true
+    });
+
+    // 添加敵人分數
+    enemies.forEach(enemy => {
+        scores.push({
+            name: enemy.name,
+            score: Math.floor(enemy.mass),
+            isPlayer: false
+        });
+    });
+
+    // 按分數降序排序
+    scores.sort((a, b) => b.score - a.score);
+
+    // 顯示排序後的分數
+    scores.forEach(item => {
+        const scoreElement = document.createElement('div');
+        scoreElement.className = 'player-score';
+        if (item.isPlayer) {
+            scoreElement.style.backgroundColor = '#ffe6e6'; // 玩家使用淺紅色背景
+        }
+        scoreElement.innerHTML = `
+            <span class="name">${item.name}</span>
+            <span class="score">${item.score}</span>
+        `;
+        leaderboard.appendChild(scoreElement);
+    });
+}
 
 function create() {
     // 創建遊戲世界
@@ -58,21 +142,12 @@ function create() {
     player.setRadius(player.radius);
     playerPieces.push(player);
 
-    // 創建敵人（藍色圓形）
+    // 創建敵人
     for (let i = 0; i < 5; i++) {
-        const enemy = this.add.circle(
+        createEnemy.call(this,
             Phaser.Math.Between(50, WORLD_SIZE-50),
-            Phaser.Math.Between(50, WORLD_SIZE-50),
-            20,
-            0x0000ff
+            Phaser.Math.Between(50, WORLD_SIZE-50)
         );
-        this.physics.add.existing(enemy);
-        enemy.body.setCollideWorldBounds(true);
-        enemy.mass = 10;
-        enemy.radius = Math.sqrt(enemy.mass) * 4;
-        enemy.setRadius(enemy.radius);
-        enemy.target = null;
-        enemies.push(enemy);
     }
 
     // 創建食物（綠色圓形）
@@ -98,8 +173,16 @@ function create() {
     camera.startFollow(player, true, 0.1, 0.1);
 
     // 顯示分數
-    scoreText = this.add.text(16, 16, '分數: 0', { fontSize: '32px', fill: '#000' });
-    scoreText.setScrollFactor(0); // 讓分數固定在畫面上
+    scoreText = this.add.text(16, 16, '分數: 0', { 
+        fontSize: '32px', 
+        fill: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 4
+    });
+    scoreText.setScrollFactor(0);
+
+    // 初始化排行榜
+    updateLeaderboard();
 }
 
 function update() {
@@ -216,24 +299,44 @@ function update() {
                 enemies.splice(otherIndex, 1);
                 
                 // 重新生成被吃掉的敵人
-                const newEnemy = this.add.circle(
+                createEnemy.call(this,
                     Phaser.Math.Between(50, WORLD_SIZE-50),
-                    Phaser.Math.Between(50, WORLD_SIZE-50),
-                    20,
-                    0x0000ff
+                    Phaser.Math.Between(50, WORLD_SIZE-50)
                 );
-                this.physics.add.existing(newEnemy);
-                newEnemy.body.setCollideWorldBounds(true);
-                newEnemy.mass = 10;
-                newEnemy.radius = Math.sqrt(newEnemy.mass) * 4;
-                newEnemy.setRadius(newEnemy.radius);
-                newEnemy.target = null;
-                enemies.push(newEnemy);
             }
         });
     });
 
     // 檢查碰撞
+    // 敵人吃食物
+    enemies.forEach(enemy => {
+        foods.forEach((food, index) => {
+            if (Phaser.Math.Distance.Between(
+                enemy.x, enemy.y,
+                food.x, food.y
+            ) < enemy.radius) {
+                // 增加敵人大小
+                enemy.mass += 2;
+                enemy.radius = Math.sqrt(enemy.mass) * 4;
+                enemy.setRadius(enemy.radius);
+                
+                // 移除食物
+                food.destroy();
+                foods.splice(index, 1);
+                
+                // 創建新的食物
+                const newFood = this.add.circle(
+                    Phaser.Math.Between(50, WORLD_SIZE-50),
+                    Phaser.Math.Between(50, WORLD_SIZE-50),
+                    5,
+                    0x00ff00
+                );
+                this.physics.add.existing(newFood);
+                foods.push(newFood);
+            }
+        });
+    });
+
     // 玩家吃食物
     playerPieces.forEach(piece => {
         foods.forEach((food, index) => {
@@ -242,7 +345,7 @@ function update() {
                 food.x, food.y
             ) < piece.radius) {
                 // 增加玩家大小
-                piece.mass += 2; // 增加更多質量
+                piece.mass += 2;
                 piece.radius = Math.sqrt(piece.mass) * 4;
                 piece.setRadius(piece.radius);
                 
@@ -265,89 +368,65 @@ function update() {
                 foods.push(newFood);
             }
         });
-    });
 
-    // 敵人吃食物
-    enemies.forEach(enemy => {
-        foods.forEach((food, index) => {
-            if (Phaser.Math.Distance.Between(
-                enemy.x, enemy.y,
-                food.x, food.y
-            ) < enemy.radius) {
-                // 增加敵人大小
-                enemy.mass += 2; // 增加更多質量
-                enemy.radius = Math.sqrt(enemy.mass) * 4;
-                enemy.setRadius(enemy.radius);
+        // 玩家吃敵人
+        enemies.forEach((enemy, index) => {
+            if (piece.mass > enemy.mass * 1.1 && 
+                Phaser.Math.Distance.Between(
+                    piece.x, piece.y,
+                    enemy.x, enemy.y
+                ) < piece.radius) {
+                // 增加玩家大小
+                piece.mass += enemy.mass * 0.8;
+                piece.radius = Math.sqrt(piece.mass) * 4;
+                piece.setRadius(piece.radius);
                 
-                // 移除食物
-                food.destroy();
-                foods.splice(index, 1);
+                // 更新分數
+                score += 50;
+                scoreText.setText('分數: ' + score);
                 
-                // 創建新的食物
-                const newFood = this.add.circle(
+                // 移除敵人
+                enemy.destroy();
+                enemies.splice(index, 1);
+                
+                // 創建新的敵人
+                createEnemy.call(this,
                     Phaser.Math.Between(50, WORLD_SIZE-50),
-                    Phaser.Math.Between(50, WORLD_SIZE-50),
-                    5,
-                    0x00ff00
+                    Phaser.Math.Between(50, WORLD_SIZE-50)
                 );
-                this.physics.add.existing(newFood);
-                foods.push(newFood);
             }
         });
+    });
 
-        // 檢查玩家是否被敵人吃掉
-        playerPieces.forEach((piece, pieceIndex) => {
+    // 敵人吃玩家
+    enemies.forEach(enemy => {
+        playerPieces.forEach((piece, index) => {
             if (enemy.mass > piece.mass * 1.1 && 
                 Phaser.Math.Distance.Between(
                     enemy.x, enemy.y,
                     piece.x, piece.y
                 ) < enemy.radius) {
-                // 敵人吃掉玩家
+                // 增加敵人大小
                 enemy.mass += piece.mass * 0.8;
-                piece.destroy();
-                playerPieces.splice(pieceIndex, 1);
+                enemy.radius = Math.sqrt(enemy.mass) * 4;
+                enemy.setRadius(enemy.radius);
                 
-                // 如果所有玩家碎片都被吃掉，重新開始
+                // 移除玩家碎片
+                piece.destroy();
+                playerPieces.splice(index, 1);
+                
+                // 如果所有玩家碎片都被吃掉，顯示遊戲結束提示
                 if (playerPieces.length === 0) {
-                    resetGame();
+                    if (confirm('遊戲結束！\n\n你的分數是：' + score + '\n\n是否要重新開始？')) {
+                        location.reload();
+                    }
                 }
             }
         });
-
-        // 檢查敵人是否被玩家吃掉
-        if (playerPieces.some(piece => piece.mass > enemy.mass * 1.1) &&
-            playerPieces.some(piece => 
-                Phaser.Math.Distance.Between(
-                    piece.x, piece.y,
-                    enemy.x, enemy.y
-                ) < piece.radius
-            )) {
-            // 玩家吃掉敵人
-            playerPieces.forEach(piece => {
-                if (piece.mass > enemy.mass * 1.1) {
-                    piece.mass += enemy.mass * 0.8;
-                    score += 50;
-                    scoreText.setText('分數: ' + score);
-                }
-            });
-            
-            // 重新生成敵人
-            enemy.destroy();
-            const newEnemy = this.add.circle(
-                Phaser.Math.Between(50, WORLD_SIZE-50),
-                Phaser.Math.Between(50, WORLD_SIZE-50),
-                20,
-                0x0000ff
-            );
-            this.physics.add.existing(newEnemy);
-            newEnemy.body.setCollideWorldBounds(true);
-            newEnemy.mass = 10;
-            newEnemy.radius = Math.sqrt(newEnemy.mass) * 4;
-            newEnemy.setRadius(newEnemy.radius);
-            newEnemy.target = null;
-            enemies.push(newEnemy);
-        }
     });
+
+    // 更新排行榜
+    updateLeaderboard();
 }
 
 function splitPlayer() {
@@ -437,18 +516,23 @@ function resetGame() {
     enemies.forEach(enemy => enemy.destroy());
     enemies = [];
     for (let i = 0; i < 5; i++) {
-        const enemy = this.add.circle(
+        createEnemy.call(this,
             Phaser.Math.Between(50, WORLD_SIZE-50),
-            Phaser.Math.Between(50, WORLD_SIZE-50),
-            20,
-            0x0000ff
+            Phaser.Math.Between(50, WORLD_SIZE-50)
         );
-        this.physics.add.existing(enemy);
-        enemy.body.setCollideWorldBounds(true);
-        enemy.mass = 10;
-        enemy.radius = Math.sqrt(enemy.mass) * 4;
-        enemy.setRadius(enemy.radius);
-        enemy.target = null;
-        enemies.push(enemy);
     }
+}
+
+// 在創建敵人時使用新的名字生成函數
+function createEnemy(x, y) {
+    const enemy = this.add.circle(x, y, 20, 0x0000ff);
+    this.physics.add.existing(enemy);
+    enemy.body.setCollideWorldBounds(true);
+    enemy.mass = 10;
+    enemy.radius = Math.sqrt(enemy.mass) * 4;
+    enemy.setRadius(enemy.radius);
+    enemy.target = null;
+    enemy.name = getRandomName();
+    enemies.push(enemy);
+    return enemy;
 } 
