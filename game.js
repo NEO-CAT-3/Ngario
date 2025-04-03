@@ -1,7 +1,7 @@
 const config = {
     type: Phaser.AUTO,
-    width: 800,
-    height: 600,
+    width: window.innerWidth,
+    height: window.innerHeight,
     parent: 'game',
     backgroundColor: '#ffffff', // 添加白色背景
     physics: {
@@ -65,7 +65,7 @@ function createWavyCircle(scene, x, y, radius, color) {
 
 function create() {
     // 創建遊戲世界
-    this.physics.world.setBounds(0, 0, WORLD_SIZE, WORLD_SIZE);
+    this.physics.world.setBounds(0, 0, window.innerWidth, window.innerHeight);
 
     // 創建網格背景
     const gridSize = 50;
@@ -73,13 +73,13 @@ function create() {
     graphics.lineStyle(1, 0xcccccc, 0.5);
     
     // 繪製垂直線
-    for (let x = 0; x <= WORLD_SIZE; x += gridSize) {
-        graphics.lineBetween(x, 0, x, WORLD_SIZE);
+    for (let x = 0; x <= window.innerWidth; x += gridSize) {
+        graphics.lineBetween(x, 0, x, window.innerHeight);
     }
     
     // 繪製水平線
-    for (let y = 0; y <= WORLD_SIZE; y += gridSize) {
-        graphics.lineBetween(0, y, WORLD_SIZE, y);
+    for (let y = 0; y <= window.innerHeight; y += gridSize) {
+        graphics.lineBetween(0, y, window.innerWidth, y);
     }
 
     // 創建玩家（紅色圓形）
