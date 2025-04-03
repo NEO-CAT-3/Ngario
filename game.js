@@ -172,6 +172,20 @@ function update() {
             }
         });
 
+        // 檢查其他敵人（如果其他敵人比當前敵人小）
+        enemies.forEach(otherEnemy => {
+            if (otherEnemy !== enemy && otherEnemy.mass < enemy.mass) {
+                const distance = Phaser.Math.Distance.Between(
+                    enemy.x, enemy.y,
+                    otherEnemy.x, otherEnemy.y
+                );
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearestTarget = otherEnemy;
+                }
+            }
+        });
+
         // 移動敵人
         if (nearestTarget) {
             const angle = Phaser.Math.Angle.Between(
@@ -185,6 +199,38 @@ function update() {
         // 更新敵人大小
         enemy.radius = Math.sqrt(enemy.mass) * 4;
         enemy.setRadius(enemy.radius);
+    });
+
+    // 檢查敵人互相吃掉
+    enemies.forEach((enemy, index) => {
+        enemies.forEach((otherEnemy, otherIndex) => {
+            if (enemy !== otherEnemy && 
+                enemy.mass > otherEnemy.mass * 1.1 &&
+                Phaser.Math.Distance.Between(
+                    enemy.x, enemy.y,
+                    otherEnemy.x, otherEnemy.y
+                ) < enemy.radius) {
+                // 敵人吃掉其他敵人
+                enemy.mass += otherEnemy.mass * 0.8;
+                otherEnemy.destroy();
+                enemies.splice(otherIndex, 1);
+                
+                // 重新生成被吃掉的敵人
+                const newEnemy = this.add.circle(
+                    Phaser.Math.Between(50, WORLD_SIZE-50),
+                    Phaser.Math.Between(50, WORLD_SIZE-50),
+                    20,
+                    0x0000ff
+                );
+                this.physics.add.existing(newEnemy);
+                newEnemy.body.setCollideWorldBounds(true);
+                newEnemy.mass = 10;
+                newEnemy.radius = Math.sqrt(newEnemy.mass) * 4;
+                newEnemy.setRadius(newEnemy.radius);
+                newEnemy.target = null;
+                enemies.push(newEnemy);
+            }
+        });
     });
 
     // 檢查碰撞
@@ -386,4 +432,23 @@ function resetGame() {
     
     // 重置相機
     camera.startFollow(player, true, 0.1, 0.1);
+    
+    // 重新生成所有敵人
+    enemies.forEach(enemy => enemy.destroy());
+    enemies = [];
+    for (let i = 0; i < 5; i++) {
+        const enemy = this.add.circle(
+            Phaser.Math.Between(50, WORLD_SIZE-50),
+            Phaser.Math.Between(50, WORLD_SIZE-50),
+            20,
+            0x0000ff
+        );
+        this.physics.add.existing(enemy);
+        enemy.body.setCollideWorldBounds(true);
+        enemy.mass = 10;
+        enemy.radius = Math.sqrt(enemy.mass) * 4;
+        enemy.setRadius(enemy.radius);
+        enemy.target = null;
+        enemies.push(enemy);
+    }
 } 
