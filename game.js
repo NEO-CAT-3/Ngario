@@ -30,6 +30,38 @@ let scoreText;
 let camera;
 const WORLD_SIZE = 2000; // 世界大小
 
+// 創建波動圓形
+function createWavyCircle(scene, x, y, radius, color) {
+    const graphics = scene.add.graphics();
+    const points = [];
+    const segments = 32;
+    const time = scene.time.now;
+    
+    for (let i = 0; i < segments; i++) {
+        const angle = (i / segments) * Math.PI * 2;
+        const wave = Math.sin(time * 0.002 + angle * 3) * 2;
+        const r = radius + wave;
+        points.push({
+            x: x + Math.cos(angle) * r,
+            y: y + Math.sin(angle) * r
+        });
+    }
+    
+    graphics.clear();
+    graphics.lineStyle(2, color);
+    graphics.beginPath();
+    graphics.moveTo(points[0].x, points[0].y);
+    
+    for (let i = 1; i < points.length; i++) {
+        graphics.lineTo(points[i].x, points[i].y);
+    }
+    
+    graphics.closePath();
+    graphics.strokePath();
+    
+    return graphics;
+}
+
 function create() {
     // 創建遊戲世界
     this.physics.world.setBounds(0, 0, WORLD_SIZE, WORLD_SIZE);
@@ -50,40 +82,38 @@ function create() {
     }
 
     // 創建玩家（紅色圓形）
-    player = this.add.circle(WORLD_SIZE/2, WORLD_SIZE/2, 20, 0xff0000);
+    player = this.add.graphics();
+    player.x = WORLD_SIZE/2;
+    player.y = WORLD_SIZE/2;
     this.physics.add.existing(player);
     player.body.setCollideWorldBounds(true);
-    player.mass = 10; // 初始質量
-    player.radius = Math.sqrt(player.mass) * 4; // 根據質量計算半徑
-    player.setRadius(player.radius);
+    player.mass = 10;
+    player.radius = Math.sqrt(player.mass) * 4;
+    player.color = 0xff0000;
     playerPieces.push(player);
 
     // 創建敵人（藍色圓形）
     for (let i = 0; i < 5; i++) {
-        const enemy = this.add.circle(
-            Phaser.Math.Between(50, WORLD_SIZE-50),
-            Phaser.Math.Between(50, WORLD_SIZE-50),
-            20,
-            0x0000ff
-        );
+        const enemy = this.add.graphics();
+        enemy.x = Phaser.Math.Between(50, WORLD_SIZE-50);
+        enemy.y = Phaser.Math.Between(50, WORLD_SIZE-50);
         this.physics.add.existing(enemy);
         enemy.body.setCollideWorldBounds(true);
         enemy.mass = 10;
         enemy.radius = Math.sqrt(enemy.mass) * 4;
-        enemy.setRadius(enemy.radius);
+        enemy.color = 0x0000ff;
         enemy.target = null;
         enemies.push(enemy);
     }
 
     // 創建食物（綠色圓形）
     for (let i = 0; i < 50; i++) {
-        const food = this.add.circle(
-            Phaser.Math.Between(50, WORLD_SIZE-50),
-            Phaser.Math.Between(50, WORLD_SIZE-50),
-            5,
-            0x00ff00
-        );
+        const food = this.add.graphics();
+        food.x = Phaser.Math.Between(50, WORLD_SIZE-50);
+        food.y = Phaser.Math.Between(50, WORLD_SIZE-50);
         this.physics.add.existing(food);
+        food.radius = 5;
+        food.color = 0x00ff00;
         foods.push(food);
     }
 
@@ -103,6 +133,93 @@ function create() {
 }
 
 function update() {
+    // 更新玩家波動效果
+    playerPieces.forEach(piece => {
+        const points = [];
+        const segments = 32;
+        const time = this.time.now;
+        
+        for (let i = 0; i < segments; i++) {
+            const angle = (i / segments) * Math.PI * 2;
+            const wave = Math.sin(time * 0.002 + angle * 3) * 2;
+            const r = piece.radius + wave;
+            points.push({
+                x: piece.x + Math.cos(angle) * r,
+                y: piece.y + Math.sin(angle) * r
+            });
+        }
+        
+        piece.clear();
+        piece.lineStyle(2, piece.color);
+        piece.beginPath();
+        piece.moveTo(points[0].x, points[0].y);
+        
+        for (let i = 1; i < points.length; i++) {
+            piece.lineTo(points[i].x, points[i].y);
+        }
+        
+        piece.closePath();
+        piece.strokePath();
+    });
+
+    // 更新敵人波動效果
+    enemies.forEach(enemy => {
+        const points = [];
+        const segments = 32;
+        const time = this.time.now;
+        
+        for (let i = 0; i < segments; i++) {
+            const angle = (i / segments) * Math.PI * 2;
+            const wave = Math.sin(time * 0.002 + angle * 3) * 2;
+            const r = enemy.radius + wave;
+            points.push({
+                x: enemy.x + Math.cos(angle) * r,
+                y: enemy.y + Math.sin(angle) * r
+            });
+        }
+        
+        enemy.clear();
+        enemy.lineStyle(2, enemy.color);
+        enemy.beginPath();
+        enemy.moveTo(points[0].x, points[0].y);
+        
+        for (let i = 1; i < points.length; i++) {
+            enemy.lineTo(points[i].x, points[i].y);
+        }
+        
+        enemy.closePath();
+        enemy.strokePath();
+    });
+
+    // 更新食物波動效果
+    foods.forEach(food => {
+        const points = [];
+        const segments = 32;
+        const time = this.time.now;
+        
+        for (let i = 0; i < segments; i++) {
+            const angle = (i / segments) * Math.PI * 2;
+            const wave = Math.sin(time * 0.002 + angle * 3) * 1;
+            const r = food.radius + wave;
+            points.push({
+                x: food.x + Math.cos(angle) * r,
+                y: food.y + Math.sin(angle) * r
+            });
+        }
+        
+        food.clear();
+        food.lineStyle(1, food.color);
+        food.beginPath();
+        food.moveTo(points[0].x, points[0].y);
+        
+        for (let i = 1; i < points.length; i++) {
+            food.lineTo(points[i].x, points[i].y);
+        }
+        
+        food.closePath();
+        food.strokePath();
+    });
+
     // 處理玩家移動
     playerPieces.forEach(piece => {
         const speed = 200 / Math.sqrt(piece.mass);
@@ -209,13 +326,12 @@ function update() {
                 foods.splice(index, 1);
                 
                 // 創建新的食物
-                const newFood = this.add.circle(
-                    Phaser.Math.Between(50, WORLD_SIZE-50),
-                    Phaser.Math.Between(50, WORLD_SIZE-50),
-                    5,
-                    0x00ff00
-                );
+                const newFood = this.add.graphics();
+                newFood.x = Phaser.Math.Between(50, WORLD_SIZE-50);
+                newFood.y = Phaser.Math.Between(50, WORLD_SIZE-50);
                 this.physics.add.existing(newFood);
+                newFood.radius = 5;
+                newFood.color = 0x00ff00;
                 foods.push(newFood);
             }
         });
@@ -238,13 +354,12 @@ function update() {
                 foods.splice(index, 1);
                 
                 // 創建新的食物
-                const newFood = this.add.circle(
-                    Phaser.Math.Between(50, WORLD_SIZE-50),
-                    Phaser.Math.Between(50, WORLD_SIZE-50),
-                    5,
-                    0x00ff00
-                );
+                const newFood = this.add.graphics();
+                newFood.x = Phaser.Math.Between(50, WORLD_SIZE-50);
+                newFood.y = Phaser.Math.Between(50, WORLD_SIZE-50);
                 this.physics.add.existing(newFood);
+                newFood.radius = 5;
+                newFood.color = 0x00ff00;
                 foods.push(newFood);
             }
         });
@@ -287,18 +402,14 @@ function update() {
             
             // 重新生成敵人
             enemy.destroy();
-            const newEnemy = this.add.circle(
-                Phaser.Math.Between(50, WORLD_SIZE-50),
-                Phaser.Math.Between(50, WORLD_SIZE-50),
-                20,
-                0x0000ff
-            );
+            const newEnemy = this.add.graphics();
+            newEnemy.x = Phaser.Math.Between(50, WORLD_SIZE-50);
+            newEnemy.y = Phaser.Math.Between(50, WORLD_SIZE-50);
             this.physics.add.existing(newEnemy);
             newEnemy.body.setCollideWorldBounds(true);
             newEnemy.mass = 10;
             newEnemy.radius = Math.sqrt(newEnemy.mass) * 4;
-            newEnemy.setRadius(newEnemy.radius);
-            newEnemy.target = null;
+            newEnemy.color = 0x0000ff;
             enemies.push(newEnemy);
         }
     });
@@ -307,17 +418,14 @@ function update() {
 function splitPlayer() {
     // 只有當玩家質量足夠大時才能分裂
     if (playerPieces[0].mass >= 20) {
-        const newPiece = this.add.circle(
-            playerPieces[0].x,
-            playerPieces[0].y,
-            Math.sqrt(playerPieces[0].mass / 2) * 4,
-            0xff0000
-        );
+        const newPiece = this.add.graphics();
+        newPiece.x = playerPieces[0].x;
+        newPiece.y = playerPieces[0].y;
         this.physics.add.existing(newPiece);
         newPiece.body.setCollideWorldBounds(true);
         newPiece.mass = playerPieces[0].mass / 2;
         newPiece.radius = Math.sqrt(newPiece.mass) * 4;
-        newPiece.setRadius(newPiece.radius);
+        newPiece.color = 0xff0000;
         
         // 設置新碎片的速度
         const angle = Phaser.Math.Angle.Between(
@@ -341,13 +449,12 @@ function shootMass() {
     // 只有當玩家質量足夠大時才能噴射
     if (playerPieces[0].mass >= 15) {
         // 創建噴射的質量
-        const mass = this.add.circle(
-            playerPieces[0].x,
-            playerPieces[0].y,
-            5,
-            0xff0000
-        );
+        const mass = this.add.graphics();
+        mass.x = playerPieces[0].x;
+        mass.y = playerPieces[0].y;
         this.physics.add.existing(mass);
+        mass.mass = 5;
+        mass.color = 0xff0000;
         
         // 設置噴射方向
         const angle = Phaser.Math.Angle.Between(
@@ -372,12 +479,14 @@ function shootMass() {
 
 function resetGame() {
     // 重置玩家
-    player = this.add.circle(WORLD_SIZE/2, WORLD_SIZE/2, 20, 0xff0000);
+    player = this.add.graphics();
+    player.x = WORLD_SIZE/2;
+    player.y = WORLD_SIZE/2;
     this.physics.add.existing(player);
     player.body.setCollideWorldBounds(true);
     player.mass = 10;
     player.radius = Math.sqrt(player.mass) * 4;
-    player.setRadius(player.radius);
+    player.color = 0xff0000;
     playerPieces = [player];
     
     // 重置分數
