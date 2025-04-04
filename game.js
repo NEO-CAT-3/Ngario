@@ -212,14 +212,36 @@ function update() {
         piece.setRadius(piece.radius);
     });
 
-    // 處理分裂（按空格鍵）
-    if (Phaser.Input.Keyboard.JustDown(spaceKey)) {
-        splitPlayer();
-    }
-
-    // 處理噴射質量（按 W 鍵）
-    if (wKey.isDown) {
-        shootMass();
+    // 玩家控制
+    if (playerPieces.length > 0) {
+        const mainPiece = playerPieces[0];
+        const pointer = this.input.activePointer;
+        
+        // 使用滑鼠位置來計算移動方向
+        const angle = Phaser.Math.Angle.Between(
+            mainPiece.x,
+            mainPiece.y,
+            pointer.worldX,
+            pointer.worldY
+        );
+        
+        // 根據質量計算速度
+        const speed = 200 / Math.sqrt(mainPiece.mass);
+        
+        // 設置速度
+        mainPiece.body.setVelocity(
+            Math.cos(angle) * speed,
+            Math.sin(angle) * speed
+        );
+        
+        // 其他玩家控制邏輯保持不變
+        if (this.input.keyboard.addKey('SPACE').isDown && mainPiece.mass > 20) {
+            splitPlayer.call(this, mainPiece);
+        }
+        
+        if (this.input.keyboard.addKey('W').isDown && mainPiece.mass > 10) {
+            ejectMass.call(this, mainPiece);
+        }
     }
 
     // 更新敵人 AI
@@ -431,25 +453,25 @@ function update() {
     updateLeaderboard();
 }
 
-function splitPlayer() {
+function splitPlayer(piece) {
     // 只有當玩家質量足夠大時才能分裂
-    if (playerPieces[0].mass >= 20) {
+    if (piece.mass >= 20) {
         const newPiece = this.add.circle(
-            playerPieces[0].x,
-            playerPieces[0].y,
-            Math.sqrt(playerPieces[0].mass / 2) * 4,
+            piece.x,
+            piece.y,
+            Math.sqrt(piece.mass / 2) * 4,
             0xff0000
         );
         this.physics.add.existing(newPiece);
         newPiece.body.setCollideWorldBounds(true);
-        newPiece.mass = playerPieces[0].mass / 2;
+        newPiece.mass = piece.mass / 2;
         newPiece.radius = Math.sqrt(newPiece.mass) * 4;
         newPiece.setRadius(newPiece.radius);
         
         // 設置新碎片的速度
         const angle = Phaser.Math.Angle.Between(
-            playerPieces[0].x,
-            playerPieces[0].y,
+            piece.x,
+            piece.y,
             this.input.mousePointer.x,
             this.input.mousePointer.y
         );
@@ -458,19 +480,19 @@ function splitPlayer() {
         newPiece.body.setVelocityY(Math.sin(angle) * speed);
         
         // 更新原碎片質量
-        playerPieces[0].mass /= 2;
+        piece.mass /= 2;
         
         playerPieces.push(newPiece);
     }
 }
 
-function shootMass() {
+function ejectMass(piece) {
     // 只有當玩家質量足夠大時才能噴射
-    if (playerPieces[0].mass >= 15) {
+    if (piece.mass >= 15) {
         // 創建噴射的質量
         const mass = this.add.circle(
-            playerPieces[0].x,
-            playerPieces[0].y,
+            piece.x,
+            piece.y,
             5,
             0xff0000
         );
@@ -478,8 +500,8 @@ function shootMass() {
         
         // 設置噴射方向
         const angle = Phaser.Math.Angle.Between(
-            playerPieces[0].x,
-            playerPieces[0].y,
+            piece.x,
+            piece.y,
             this.input.mousePointer.x,
             this.input.mousePointer.y
         );
@@ -488,7 +510,7 @@ function shootMass() {
         mass.body.setVelocityY(Math.sin(angle) * speed);
         
         // 減少玩家質量
-        playerPieces[0].mass -= 1;
+        piece.mass -= 1;
         
         // 3秒後移除噴射的質量
         this.time.delayedCall(3000, () => {
