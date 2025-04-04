@@ -114,6 +114,10 @@ function updateLeaderboard() {
     });
 }
 
+// 在全局變量中添加
+let specialEnemyTimer = 0;
+let specialEnemySpawnInterval = 60000; // 60秒
+
 function create() {
     // 創建遊戲世界
     this.physics.world.setBounds(0, 0, WORLD_SIZE, WORLD_SIZE);
@@ -181,8 +185,30 @@ function create() {
     });
     scoreText.setScrollFactor(0);
 
+    // 添加操作說明文字（移至左下角）
+    const controlsText = this.add.text(16, config.height - 100, 
+        '操作說明：\n' +
+        '滑鼠：移動\n' +
+        '空格：分裂(必須大於100分)\n' +
+        'W：噴射質量',
+        { 
+            fontSize: '16px',
+            fill: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 4,
+            backgroundColor: '#00000080',
+            padding: { x: 10, y: 5 },
+            align: 'left'
+        }
+    );
+    controlsText.setScrollFactor(0);
+    controlsText.setDepth(1000);
+
     // 初始化排行榜
     updateLeaderboard();
+
+    // 初始化特殊敵人計時器
+    specialEnemyTimer = this.time.now;
 }
 
 function update() {
@@ -214,60 +240,119 @@ function update() {
 
     // 玩家控制
     if (playerPieces.length > 0) {
-        const mainPiece = playerPieces[0];
         const pointer = this.input.activePointer;
         
-        // 使用滑鼠位置來計算移動方向
-        const angle = Phaser.Math.Angle.Between(
-            mainPiece.x,
-            mainPiece.y,
-            pointer.worldX,
-            pointer.worldY
-        );
+        // 所有玩家碎片都朝向滑鼠移動
+        playerPieces.forEach(piece => {
+            const angle = Phaser.Math.Angle.Between(
+                piece.x,
+                piece.y,
+                pointer.worldX,
+                pointer.worldY
+            );
+            
+            const speed = 400 / Math.sqrt(piece.mass);
+            piece.body.setVelocity(
+                Math.cos(angle) * speed,
+                Math.sin(angle) * speed
+            );
+        });
         
-        // 根據質量計算速度
-        const speed = 200 / Math.sqrt(mainPiece.mass);
-        
-        // 設置速度
-        mainPiece.body.setVelocity(
-            Math.cos(angle) * speed,
-            Math.sin(angle) * speed
-        );
-        
-        // 其他玩家控制邏輯保持不變
-        if (this.input.keyboard.addKey('SPACE').isDown && mainPiece.mass > 20) {
-            splitPlayer.call(this, mainPiece);
+        // 分裂控制
+        if (Phaser.Input.Keyboard.JustDown(this.input.keyboard.addKey('SPACE'))) {
+            playerPieces.forEach(piece => {
+                if (piece.mass > 100) {
+                    splitPlayer.call(this, piece);
+                }
+            });
         }
         
-        if (this.input.keyboard.addKey('W').isDown && mainPiece.mass > 10) {
-            ejectMass.call(this, mainPiece);
+        // 噴射控制（每次只噴射一個最小圓）
+        if (Phaser.Input.Keyboard.JustDown(this.input.keyboard.addKey('W')) && playerPieces[0].mass > 10) {
+            ejectMass.call(this, playerPieces[0]);
         }
+    }
+
+    // 檢查是否需要生成特殊敵人
+    if (this.time.now - specialEnemyTimer >= specialEnemySpawnInterval) {
+        // 在玩家附近生成特殊敵人
+        const angle = Math.random() * Math.PI * 2;
+        const distance = 300;
+        const x = player.x + Math.cos(angle) * distance;
+        const y = player.y + Math.sin(angle) * distance;
+        
+        createEnemy.call(this, x, y, true);
+        specialEnemyTimer = this.time.now;
     }
 
     // 更新敵人 AI
     enemies.forEach(enemy => {
-        // 敵人速度也根據質量計算
-        const speed = 200 / Math.sqrt(enemy.mass);
-
-        // 尋找最近的目標
+        const baseSpeed = 400;
+        const speed = baseSpeed / Math.sqrt(enemy.mass) * 0.8;
+        
         let nearestTarget = null;
         let minDistance = Infinity;
+        let shouldFlee = false;
+        let fleeTarget = null;
+        let fleeDirection = null;
+        let isCornered = false;
+        let allyFound = false;
+        let allyTarget = null;
 
-        // 檢查食物
-        foods.forEach(food => {
-            const distance = Phaser.Math.Distance.Between(
-                enemy.x, enemy.y,
-                food.x, food.y
-            );
-            if (distance < minDistance) {
-                minDistance = distance;
-                nearestTarget = food;
+        // 檢查是否在牆角
+        const margin = 100;
+        isCornered = (enemy.x < margin || enemy.x > WORLD_SIZE - margin) && 
+                    (enemy.y < margin || enemy.y > WORLD_SIZE - margin);
+
+        // 檢查是否有更大的圓在追趕
+        playerPieces.forEach(piece => {
+            if (piece.mass > enemy.mass * 1.1) {
+                const distance = Phaser.Math.Distance.Between(
+                    enemy.x, enemy.y,
+                    piece.x, piece.y
+                );
+                if (distance < 300) {
+                    shouldFlee = true;
+                    fleeTarget = piece;
+                    minDistance = distance;
+                    
+                    // 計算逃離方向
+                    const angleToTarget = Phaser.Math.Angle.Between(
+                        enemy.x, enemy.y,
+                        piece.x, piece.y
+                    );
+                    
+                    if (isCornered) {
+                        // 計算到最近邊界的距離
+                        const distToLeft = enemy.x;
+                        const distToRight = WORLD_SIZE - enemy.x;
+                        const distToTop = enemy.y;
+                        const distToBottom = WORLD_SIZE - enemy.y;
+                        
+                        const maxDist = Math.max(distToLeft, distToRight, distToTop, distToBottom);
+                        if (maxDist === distToLeft) {
+                            fleeDirection = Math.PI;
+                        } else if (maxDist === distToRight) {
+                            fleeDirection = 0;
+                        } else if (maxDist === distToTop) {
+                            fleeDirection = -Math.PI/2;
+                        } else {
+                            fleeDirection = Math.PI/2;
+                        }
+                    } else {
+                        // 正常情況下的逃跑方向
+                        fleeDirection = angleToTarget + Math.PI;
+                    }
+                }
             }
         });
 
-        // 檢查玩家碎片（如果玩家比敵人小）
+        // 尋找最近的較小圓（優先順序：玩家碎片 > 其他敵人 > 綠色小圓）
+        let targetFound = false;
+        
+        // 檢查玩家碎片
         playerPieces.forEach(piece => {
-            if (piece.mass < enemy.mass) {
+            if (piece.mass < enemy.mass * 0.9) {
                 const distance = Phaser.Math.Distance.Between(
                     enemy.x, enemy.y,
                     piece.x, piece.y
@@ -275,32 +360,127 @@ function update() {
                 if (distance < minDistance) {
                     minDistance = distance;
                     nearestTarget = piece;
+                    targetFound = true;
                 }
             }
         });
 
-        // 檢查其他敵人（如果其他敵人比當前敵人小）
-        enemies.forEach(otherEnemy => {
-            if (otherEnemy !== enemy && otherEnemy.mass < enemy.mass) {
+        // 檢查其他敵人
+        if (!targetFound) {
+            enemies.forEach(otherEnemy => {
+                if (otherEnemy !== enemy) {
+                    const distance = Phaser.Math.Distance.Between(
+                        enemy.x, enemy.y,
+                        otherEnemy.x, otherEnemy.y
+                    );
+                    
+                    // 檢查是否可以合作攻擊
+                    if (otherEnemy.mass < enemy.mass * 0.9) {
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            nearestTarget = otherEnemy;
+                            targetFound = true;
+                        }
+                    } else if (otherEnemy.mass > enemy.mass * 0.9 && otherEnemy.mass < enemy.mass * 1.1) {
+                        // 找到盟友
+                        allyFound = true;
+                        allyTarget = otherEnemy;
+                    }
+                }
+            });
+        }
+
+        // 檢查綠色小圓
+        if (!targetFound) {
+            foods.forEach(food => {
                 const distance = Phaser.Math.Distance.Between(
                     enemy.x, enemy.y,
-                    otherEnemy.x, otherEnemy.y
+                    food.x, food.y
                 );
                 if (distance < minDistance) {
                     minDistance = distance;
-                    nearestTarget = otherEnemy;
+                    nearestTarget = food;
                 }
-            }
-        });
+            });
+        }
 
-        // 移動敵人
-        if (nearestTarget) {
+        // 特殊敵人的行為
+        if (enemy.isSpecial) {
+            // 只追蹤玩家
             const angle = Phaser.Math.Angle.Between(
                 enemy.x, enemy.y,
-                nearestTarget.x, nearestTarget.y
+                player.x, player.y
             );
-            enemy.body.setVelocityX(Math.cos(angle) * speed);
-            enemy.body.setVelocityY(Math.sin(angle) * speed);
+            enemy.body.setVelocity(
+                Math.cos(angle) * speed * 1.2, // 特殊敵人移動速度更快
+                Math.sin(angle) * speed * 1.2
+            );
+            
+            // 更新特殊敵人的顏色
+            enemy.fillColor = Phaser.Math.Between(0x000000, 0xffffff);
+            enemy.setFillStyle(enemy.fillColor);
+        } else {
+            // 移動敵人
+            if (shouldFlee && fleeDirection !== null) {
+                const fleeSpeed = speed * (isCornered ? 1.1 : 0.9);
+                
+                // 使用線性插值來平滑速度變化
+                const currentAngle = Math.atan2(enemy.body.velocity.y, enemy.body.velocity.x);
+                const targetAngle = fleeDirection;
+                const angleDiff = Phaser.Math.Angle.ShortestBetween(currentAngle, targetAngle);
+                
+                // 添加最小轉向角度閾值，避免原地自轉
+                const minAngleChange = 0.1;
+                if (Math.abs(angleDiff) > minAngleChange) {
+                    const newAngle = currentAngle + angleDiff * 0.05;
+                    enemy.body.setVelocity(
+                        Math.cos(newAngle) * fleeSpeed,
+                        Math.sin(newAngle) * fleeSpeed
+                    );
+                }
+            } else if (nearestTarget) {
+                // 追趕最近的目標
+                const angle = Phaser.Math.Angle.Between(
+                    enemy.x, enemy.y,
+                    nearestTarget.x, nearestTarget.y
+                );
+                enemy.body.setVelocity(
+                    Math.cos(angle) * speed,
+                    Math.sin(angle) * speed
+                );
+            } else if (allyFound && allyTarget) {
+                // 與盟友合作
+                const angle = Phaser.Math.Angle.Between(
+                    enemy.x, enemy.y,
+                    allyTarget.x, allyTarget.y
+                );
+                const distance = Phaser.Math.Distance.Between(
+                    enemy.x, enemy.y,
+                    allyTarget.x, allyTarget.y
+                );
+                
+                // 保持適當距離
+                if (distance > 200) {
+                    enemy.body.setVelocity(
+                        Math.cos(angle) * speed,
+                        Math.sin(angle) * speed
+                    );
+                } else if (distance < 100) {
+                    enemy.body.setVelocity(
+                        Math.cos(angle + Math.PI) * speed,
+                        Math.sin(angle + Math.PI) * speed
+                    );
+                } else {
+                    enemy.body.setVelocity(0, 0);
+                }
+            } else {
+                // 如果沒有目標，隨機移動
+                const randomAngle = Math.random() * Math.PI * 2;
+                enemy.body.setVelocity(
+                    Math.cos(randomAngle) * speed,
+                    Math.sin(randomAngle) * speed
+                );
+            }
         }
 
         // 更新敵人大小
@@ -409,7 +589,10 @@ function update() {
                 score += 50;
                 scoreText.setText('分數: ' + score);
                 
-                // 移除敵人
+                // 移除敵人和它的名字標籤
+                if (enemy.nameText) {
+                    enemy.nameText.destroy();
+                }
                 enemy.destroy();
                 enemies.splice(index, 1);
                 
@@ -449,74 +632,167 @@ function update() {
         });
     });
 
-    // 更新排行榜
+    // 更新分數（根據所有玩家碎片的總質量）
+    let totalMass = 0;
+    playerPieces.forEach(piece => {
+        totalMass += piece.mass;
+    });
+    score = Math.floor(totalMass);
+    scoreText.setText('分數: ' + score);
     updateLeaderboard();
 }
 
 function splitPlayer(piece) {
-    // 只有當玩家質量足夠大時才能分裂
-    if (piece.mass >= 20) {
+    if (piece.mass >= 35) {
+        // 計算分裂後的質量
+        const splitMass = Math.floor(piece.mass / 2);
+        
+        // 創建新碎片
         const newPiece = this.add.circle(
             piece.x,
             piece.y,
-            Math.sqrt(piece.mass / 2) * 4,
+            Math.sqrt(splitMass) * 4,
             0xff0000
         );
         this.physics.add.existing(newPiece);
         newPiece.body.setCollideWorldBounds(true);
-        newPiece.mass = piece.mass / 2;
+        newPiece.mass = splitMass;
         newPiece.radius = Math.sqrt(newPiece.mass) * 4;
         newPiece.setRadius(newPiece.radius);
         
-        // 設置新碎片的速度
+        // 計算分裂方向（朝向滑鼠）
         const angle = Phaser.Math.Angle.Between(
             piece.x,
             piece.y,
-            this.input.mousePointer.x,
-            this.input.mousePointer.y
+            this.input.mousePointer.worldX,
+            this.input.mousePointer.worldY
         );
-        const speed = 200 / Math.sqrt(newPiece.mass);
-        newPiece.body.setVelocityX(Math.cos(angle) * speed);
-        newPiece.body.setVelocityY(Math.sin(angle) * speed);
         
-        // 更新原碎片質量
-        piece.mass /= 2;
+        // 計算到鼠標的距離並增加10倍
+        const distance = Phaser.Math.Distance.Between(
+            piece.x,
+            piece.y,
+            this.input.mousePointer.worldX,
+            this.input.mousePointer.worldY
+        ) * 10;
         
+        // 設置初始速度，確保在0.1秒內到達目標距離
+        const initialSpeed = distance / 0.1;
+        newPiece.body.setVelocity(
+            Math.cos(angle) * initialSpeed,
+            Math.sin(angle) * initialSpeed
+        );
+        
+        // 0.1秒後恢復正常速度
+        this.time.delayedCall(100, () => {
+            if (newPiece.active) {
+                const normalSpeed = 400 / Math.sqrt(newPiece.mass) * 0.8;
+                newPiece.body.setVelocity(
+                    Math.cos(angle) * normalSpeed,
+                    Math.sin(angle) * normalSpeed
+                );
+            }
+        });
+        
+        // 更新原碎片的質量
+        piece.mass = splitMass;
+        piece.radius = Math.sqrt(piece.mass) * 4;
+        piece.setRadius(piece.radius);
+        
+        // 添加新碎片到玩家碎片列表
         playerPieces.push(newPiece);
+        
+        // 計算合併冷卻時間
+        const mergeCooldown = 30000 + (piece.mass * 10);
+        
+        // 設置合併冷卻時間
+        this.time.delayedCall(mergeCooldown, () => {
+            if (newPiece.active && piece.active) {
+                // 合併質量
+                piece.mass += newPiece.mass;
+                piece.radius = Math.sqrt(piece.mass) * 4;
+                piece.setRadius(piece.radius);
+                
+                // 移除新碎片
+                newPiece.destroy();
+                playerPieces = playerPieces.filter(p => p !== newPiece);
+            }
+        });
     }
 }
 
 function ejectMass(piece) {
-    // 只有當玩家質量足夠大時才能噴射
-    if (piece.mass >= 15) {
-        // 創建噴射的質量
-        const mass = this.add.circle(
-            piece.x,
-            piece.y,
-            5,
-            0xff0000
-        );
-        this.physics.add.existing(mass);
+    // 創建噴射的質量（最小大小為1分）
+    const mass = this.add.circle(
+        piece.x,
+        piece.y,
+        Math.sqrt(1) * 4,
+        0xff0000
+    );
+    this.physics.add.existing(mass);
+    mass.mass = 1; // 設置質量
+    mass.radius = Math.sqrt(mass.mass) * 4;
+    mass.setRadius(mass.radius);
+    
+    // 設置噴射方向（朝向滑鼠方向）
+    const angle = Phaser.Math.Angle.Between(
+        piece.x,
+        piece.y,
+        this.input.mousePointer.worldX,
+        this.input.mousePointer.worldY
+    );
+    const speed = 400;
+    mass.body.setVelocity(
+        Math.cos(angle) * speed,
+        Math.sin(angle) * speed
+    );
+    
+    // 減少玩家質量（固定減少1分）
+    piece.mass -= 1;
+    piece.radius = Math.sqrt(piece.mass) * 4;
+    piece.setRadius(piece.radius);
+    
+    // 檢查所有圓是否可以吸收這個小圓
+    const checkAbsorption = () => {
+        if (!mass.active) return;
         
-        // 設置噴射方向
-        const angle = Phaser.Math.Angle.Between(
-            piece.x,
-            piece.y,
-            this.input.mousePointer.x,
-            this.input.mousePointer.y
-        );
-        const speed = 400;
-        mass.body.setVelocityX(Math.cos(angle) * speed);
-        mass.body.setVelocityY(Math.sin(angle) * speed);
-        
-        // 減少玩家質量
-        piece.mass -= 1;
-        
-        // 3秒後移除噴射的質量
-        this.time.delayedCall(3000, () => {
-            mass.destroy();
+        // 檢查玩家碎片
+        playerPieces.forEach(p => {
+            if (p !== piece && Phaser.Math.Distance.Between(
+                p.x, p.y,
+                mass.x, mass.y
+            ) < p.radius) {
+                p.mass += mass.mass;
+                p.radius = Math.sqrt(p.mass) * 4;
+                p.setRadius(p.radius);
+                mass.destroy();
+            }
         });
-    }
+        
+        // 檢查敵人
+        enemies.forEach(e => {
+            if (Phaser.Math.Distance.Between(
+                e.x, e.y,
+                mass.x, mass.y
+            ) < e.radius) {
+                e.mass += mass.mass;
+                e.radius = Math.sqrt(e.mass) * 4;
+                e.setRadius(e.radius);
+                mass.destroy();
+            }
+        });
+    };
+    
+    // 每幀檢查是否可以吸收
+    this.events.on('update', checkAbsorption);
+    
+    // 3秒後移除噴射的質量
+    this.time.delayedCall(3000, () => {
+        if (mass.active) {
+            mass.destroy();
+            this.events.off('update', checkAbsorption);
+        }
+    });
 }
 
 function resetGame() {
@@ -548,18 +824,59 @@ function resetGame() {
 }
 
 // 在創建敵人時使用新的名字生成函數
-function createEnemy(x, y) {
-    // 生成隨機顏色
-    const color = Phaser.Display.Color.RandomRGB().color;
-    
-    const enemy = this.add.circle(x, y, 20, color);
+function createEnemy(x, y, isSpecial = false) {
+    // 創建圓形
+    const enemy = this.add.circle(x, y, 20, isSpecial ? 0xffffff : Phaser.Math.Between(0x000000, 0xffffff));
     this.physics.add.existing(enemy);
     enemy.body.setCollideWorldBounds(true);
     enemy.mass = 10;
     enemy.radius = Math.sqrt(enemy.mass) * 4;
     enemy.setRadius(enemy.radius);
-    enemy.target = null;
     enemy.name = getRandomName();
+    enemy.isSpecial = isSpecial;
+    
+    // 如果是特殊敵人，設置為彩色
+    if (isSpecial) {
+        enemy.fillColor = 0xffffff;
+        enemy.setStrokeStyle(2, 0xff0000);
+    }
+    
     enemies.push(enemy);
     return enemy;
+}
+
+function ejectEnemyMass(enemy) {
+    if (enemy.mass > 10) {
+        // 創建噴射的質量
+        const mass = this.add.circle(
+            enemy.x,
+            enemy.y,
+            Math.sqrt(1) * 4,
+            enemy.fillColor
+        );
+        this.physics.add.existing(mass);
+        mass.mass = 1;
+        mass.radius = Math.sqrt(mass.mass) * 4;
+        mass.setRadius(mass.radius);
+        
+        // 設置噴射方向（隨機方向）
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 400;
+        mass.body.setVelocity(
+            Math.cos(angle) * speed,
+            Math.sin(angle) * speed
+        );
+        
+        // 減少敵人質量
+        enemy.mass -= 1;
+        enemy.radius = Math.sqrt(enemy.mass) * 4;
+        enemy.setRadius(enemy.radius);
+        
+        // 3秒後移除噴射的質量
+        this.time.delayedCall(3000, () => {
+            if (mass.active) {
+                mass.destroy();
+            }
+        });
+    }
 } 
